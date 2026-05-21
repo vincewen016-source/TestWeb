@@ -3,40 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>手機相機條碼自動填入測試</title>
+    <title>手機相理條碼自動填入測試 V2</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 400px; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); box-sizing: border-box; }
-        h2 { text-align: center; color: #38bdf8; margin-top: 0; }
+        h2 { text-align: center; color: #38bdf8; margin-top: 0; margin-bottom: 15px; font-size: 20px; }
         .input-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 6px; font-size: 14px; color: #94a3b8; }
         input { width: 100%; padding: 12px; border: 2px solid #475569; border-radius: 6px; background: #0f172a; color: #fff; box-sizing: border-box; font-size: 16px; }
-        #reader { width: 100%; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
-        .btn { width: 100%; padding: 12px; background: #38bdf8; color: #0f172a; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
-        .btn:hover { background: #0ea5e9; }
-        #log { font-size: 12px; color: #e2e8f0; background: #334155; padding: 10px; border-radius: 6px; word-break: break-all; margin-top: 10px; min-height: 20px; }
+        #reader { width: 100%; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 15px; }
+        .btn { width: 100%; padding: 14px; background: #38bdf8; color: #0f172a; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
+        #log { font-size: 12px; color: #e2e8f0; background: #334155; padding: 10px; border-radius: 6px; word-break: break-all; margin-top: 5px; min-height: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>公司登入（相機掃碼版）</h2>
+    <h2>公司登入（高清掃碼版 V2）</h2>
     
     <div id="reader"></div>
-    <button class="btn" id="start-btn" onclick="startScan()">開啟相機掃描</button>
+    <button class="btn" id="start-btn" onclick="startScan()">啟動高清相機</button>
 
     <div class="input-group">
         <label>員工帳號</label>
-        <input type="text" id="username" placeholder="等待掃碼自動填入" readonly>
+        <input type="text" id="username" placeholder="等待掃碼..." readonly>
     </div>
     <div class="input-group">
         <label>登入密碼</label>
-        <input type="password" id="password" placeholder="等待掃碼自動填入" readonly>
+        <input type="password" id="password" placeholder="等待掃碼..." readonly>
     </div>
     
-    <label>系統偵測到的原始條碼內容：</label>
-    <div id="log">尚未掃描</div>
+    <label>系統原始條碼內容：</label>
+    <div id="log">尚未成功讀取條碼</div>
 </div>
 
 <script>
@@ -45,11 +44,11 @@
     function startScan() {
         document.getElementById('start-btn').style.display = 'none';
         
-        // 設定支援的條碼格式：包含 CODE128 與 QR Code
+        // 1. 調整掃描框為「寬扁形」(寬度85%，高度35%)，完美契合長條形條碼
         const config = { 
-            fps: 10, 
+            fps: 20, // 提高每秒偵測幀數，抓取更快
             qrbox: function(viewfinderWidth, viewfinderHeight) {
-                return { width: viewfinderWidth * 0.8, height: viewfinderHeight * 0.4 };
+                return { width: viewfinderWidth * 0.85, height: viewfinderHeight * 0.35 };
             },
             formatsToSupport: [ 
                 Html5QrcodeSupportedFormats.CODE_128, 
@@ -59,26 +58,29 @@
 
         html5QrcodeScanner = new Html5Qrcode("reader");
         
-        // 啟動後鏡頭
+        // 2. 核心修正：強制瀏覽器索取 1080p 或 720p 的高清後鏡頭，解決模糊問題
+        const cameraConstraints = {
+            facingMode: "environment",
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 }
+        };
+        
         html5QrcodeScanner.start(
-            { facingMode: "environment" }, 
+            cameraConstraints, 
             config,
             onScanSuccess,
             onScanFailure
         ).catch(err => {
-            alert("相機啟動失敗，請確認是否給予網頁相機權限！");
+            alert("相機啟動失敗，請確認有給予網頁相機權限！");
             document.getElementById('start-btn').style.display = 'block';
         });
     }
 
     function onScanSuccess(decodedText, decodedResult) {
-        // 顯示原始資料供檢查
         document.getElementById('log').innerText = decodedText;
         
-        // 核心解析邏輯：將掃描到的字串切開
-        // 支援切開的符號：Tab鍵(\t)、網頁編碼(%09)、換行(\n)、空格、或是特定的方塊符號
+        // 解析多種可能的分隔符號
         let delimiter = null;
-        
         if (decodedText.includes('\t')) delimiter = '\t';
         else if (decodedText.includes('%09')) delimiter = '%09';
         else if (decodedText.includes(' ')) delimiter = ' ';
@@ -87,29 +89,27 @@
         if (delimiter) {
             let parts = decodedText.split(delimiter);
             let account = parts[0].trim();
-            // 移除可能帶有 %0D 或 \r 的 Enter 結尾
             let password = parts[1].replace('%0D', '').replace('\r', '').replace('\n', '').trim();
             
-            // 填入輸入框
             document.getElementById('username').value = account;
             document.getElementById('password').value = password;
             
-            // 震動提示（如果手機支援）
-            if (navigator.vibrate) navigator.vibrate(200);
+            if (navigator.vibrate) navigator.vibrate(200); // 成功時手機震動提示
             
-            // 掃描成功後停止相機
             html5QrcodeScanner.stop();
             document.getElementById('start-btn').style.display = 'block';
             document.getElementById('start-btn').innerText = '重新掃描';
             
-            alert("條碼解析成功並已自動填入！");
+            alert("成功讀取條碼！欄位已自動填入。");
         } else {
-            alert("掃描成功，但無法自動解析帳密，請確認條碼格式是否包含 Tab 鍵或空格。");
+            // 如果沒找到分隔符，就直接把整串字塞進帳號欄供測試
+            document.getElementById('username').value = decodedText;
+            alert("已讀取條碼，但中間不含跳格符號。");
         }
     }
 
     function onScanFailure(error) {
-        // 掃描中若沒對準會持續觸發失敗，此處留空不跳出錯誤訊息影響體驗
+        // 保持靜默
     }
 </script>
 
