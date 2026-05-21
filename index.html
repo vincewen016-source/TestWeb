@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>手機相機條碼自動填入測試 V3</title>
+    <title>手機相機條碼自動填入測試 V4</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
@@ -20,18 +20,18 @@
 <body>
 
 <div class="container">
-    <h2>公司登入（智慧相容版 V3）</h2>
+    <h2>公司登入（全螢幕清晰版 V4）</h2>
     
     <div id="reader"></div>
     <button class="btn" id="start-btn" onclick="startScan()">啟動相機掃描</button>
 
     <div class="input-group">
         <label>員工帳號</label>
-        <input type="text" id="username" placeholder="等待掃碼..." readonly>
+        <input type="text" id="username" placeholder="等待自動填入..." readonly>
     </div>
     <div class="input-group">
         <label>登入密碼</label>
-        <input type="password" id="password" placeholder="等待掃碼..." readonly>
+        <input type="password" id="password" placeholder="等待自動填入..." readonly>
     </div>
     
     <label>系統原始條碼內容：</label>
@@ -44,45 +44,21 @@
     function startScan() {
         document.getElementById('start-btn').style.display = 'none';
         
-        // 寬扁形掃描框，適合一維條碼
+        // V4 核心優化：移除 qrbox！不裁剪畫面，讓晶片看整個鏡頭的完整清晰影像
         const config = { 
-            fps: 20, 
-            qrbox: function(viewfinderWidth, viewfinderHeight) {
-                return { width: viewfinderWidth * 0.85, height: viewfinderHeight * 0.35 };
-            },
-            formatsToSupport: [ 
-                Html5QrcodeSupportedFormats.CODE_128, 
-                Html5QrcodeSupportedFormats.QR_CODE 
-            ]
+            fps: 25 // 提高每秒解碼嘗試次數，捕捉更靈敏
         };
 
         html5QrcodeScanner = new Html5Qrcode("reader");
         
-        // 嘗試優先使用理想高清參數
-        const highResConstraints = {
-            facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        };
-        
-        // 【核心修正】雙重啟動機制
+        // 使用跟你第一版完全相同、絕對能成功開啟相機的基礎設定
         html5QrcodeScanner.start(
-            highResConstraints, 
+            { facingMode: "environment" }, 
             config,
             onScanSuccess,
             onScanFailure
         ).catch(err => {
-            console.log("高清模式受限，正在自動切換至標準相容模式...", err);
-            // 如果高清失敗，立刻免警告直接啟動普通基本模式（也就是你進第一版能動的模式）
-            return html5QrcodeScanner.start(
-                { facingMode: "environment" }, 
-                config,
-                onScanSuccess,
-                onScanFailure
-            );
-        }).catch(err => {
-            // 只有當普通模式也打不開（真的沒給相機權限）時，才會跳錯誤
-            alert("相機啟動失敗，請確認有給予網頁相機權限！");
+            alert("相機啟動失敗！\n\n請檢查：\n1. 是否在 LINE 內建瀏覽器中打開（請複製網址改用 Chrome 或 Safari 打開）\n2. 權限是否被封鎖。");
             document.getElementById('start-btn').style.display = 'block';
         });
     }
