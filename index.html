@@ -3,19 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>手機相機條碼自動填入測試 V5</title>
+    <title>公司登入條碼拍照解碼系統</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 400px; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); box-sizing: border-box; }
-        h2 { text-align: center; color: #38bdf8; margin-top: 0; margin-bottom: 15px; font-size: 20px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; box-sizing: border-box; }
+        .container { width: 100%; max-width: 400px; background: #1e293b; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); box-sizing: border-box; }
+        h2 { text-align: center; color: #38bdf8; margin-top: 0; margin-bottom: 25px; font-size: 20px; letter-spacing: 1px; }
         .input-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 6px; font-size: 14px; color: #94a3b8; }
         input { width: 100%; padding: 12px; border: 2px solid #475569; border-radius: 6px; background: #0f172a; color: #fff; box-sizing: border-box; font-size: 16px; }
-        #reader { width: 100%; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 15px; display: none; }
-        .btn { width: 100%; padding: 14px; color: #0f172a; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 12px; }
-        .btn-primary { background: #38bdf8; }
-        .btn-success { background: #4ade80; }
+        .btn-scan { width: 100%; padding: 16px; background: #4ade80; color: #0f172a; border: none; border-radius: 6px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 25px; transition: background 0.2s; }
+        .btn-scan:hover { background: #22c55e; }
         #log { font-size: 12px; color: #e2e8f0; background: #334155; padding: 10px; border-radius: 6px; word-break: break-all; margin-top: 5px; min-height: 20px; }
         #file-helper { display: none; }
     </style>
@@ -23,77 +21,47 @@
 <body>
 
 <div class="container">
-    <h2>公司登入（拍照解碼終極版 V5）</h2>
+    <h2>公司登入（拍照解碼版）</h2>
     
     <div id="file-helper"></div>
     
-    <div id="reader"></div>
-    
-    <button class="btn btn-success" onclick="document.getElementById('file-input').click()">📸 點我拍照/上傳掃描</button>
+    <button class="btn-scan" onclick="document.getElementById('file-input').click()">📸 點我拍照 / 上傳條碼</button>
     <input type="file" id="file-input" accept="image/*" capture="environment" style="display: none;" onchange="scanLocalFile(event)">
-
-    <button class="btn btn-primary" id= "start-btn" onclick="startScan()">📹 開啟即時鏡頭</button>
 
     <div class="input-group">
         <label>員工帳號</label>
-        <input type="text" id="username" placeholder="等待自動填入..." readonly>
+        <input type="text" id="username" placeholder="等待拍照自動填入..." readonly>
     </div>
     <div class="input-group">
         <label>登入密碼</label>
-        <input type="password" id="password" placeholder="等待自動填入..." readonly>
+        <input type="password" id="password" placeholder="等待拍照自動填入..." readonly>
     </div>
     
     <label>系統原始條碼內容：</label>
-    <div id="log">尚未成功讀取條碼</div>
+    <div id="log">尚未讀取條碼</div>
 </div>
 
 <script>
-    let html5QrcodeScanner = null;
-
-    // --- 核心升級：拍照解碼邏輯 ---
+    // 拍照或選擇檔案後的解碼邏輯
     function scanLocalFile(event) {
         if (event.target.files.length === 0) return;
         const imageFile = event.target.files[0];
         document.getElementById('log').innerText = "圖片分析解碼中，請稍候...";
         
-        // 建立一個臨時的解碼器
         const html5QrCode = new Html5Qrcode("file-helper");
         
+        // 呼叫晶片分析照片
         html5QrCode.scanFile(imageFile, true)
             .then(decodedText => {
                 processBarcodeData(decodedText);
             })
             .catch(err => {
                 document.getElementById('log').innerText = "解碼失敗！";
-                alert("照片解碼失敗！\n\n原因可能是：\n1. 拍太遠、條碼太小\n2. 角度太斜或反光\n\n請重新點擊按鈕，對準條碼拍一張清晰、水平的照片。");
+                alert("照片解碼失敗！\n\n可能原因：\n1. 照片有反光糊掉\n2. 條碼在照片中太小\n\n請重新點擊，對準條碼拍一張清晰的照片。");
             });
     }
 
-    // --- 原本的即時鏡頭邏輯 ---
-    function startScan() {
-        document.getElementById('reader').style.display = 'block';
-        document.getElementById('start-btn').style.display = 'none';
-        
-        const config = { fps: 25 };
-        html5QrcodeScanner = new Html5Qrcode("reader");
-        
-        html5QrcodeScanner.start(
-            { facingMode: "environment" }, 
-            config,
-            (text) => {
-                html5QrcodeScanner.stop();
-                document.getElementById('reader').style.display = 'none';
-                document.getElementById('start-btn').style.display = 'block';
-                processBarcodeData(text);
-            },
-            () => {}
-        ).catch(err => {
-            alert("即時相機啟動失敗。");
-            document.getElementById('start-btn').style.display = 'block';
-        });
-    }
-
-    // --- 統一的資料拆分填入邏輯 ---
+    // 解析條碼並自動填入欄位
     function processBarcodeData(decodedText) {
         document.getElementById('log').innerText = decodedText;
         
@@ -111,7 +79,7 @@
             document.getElementById('username').value = account;
             document.getElementById('password').value = password;
             
-            if (navigator.vibrate) navigator.vibrate(200); 
+            if (navigator.vibrate) navigator.vibrate(200); // 成功時震動提示
             alert("成功讀取條碼！欄位已自動填入。");
         } else {
             document.getElementById('username').value = decodedText;
