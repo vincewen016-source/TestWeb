@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>手機相理條碼自動填入測試 V2</title>
+    <title>手機相機條碼自動填入測試 V3</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
@@ -20,10 +20,10 @@
 <body>
 
 <div class="container">
-    <h2>公司登入（高清掃碼版 V2）</h2>
+    <h2>公司登入（智慧相容版 V3）</h2>
     
     <div id="reader"></div>
-    <button class="btn" id="start-btn" onclick="startScan()">啟動高清相機</button>
+    <button class="btn" id="start-btn" onclick="startScan()">啟動相機掃描</button>
 
     <div class="input-group">
         <label>員工帳號</label>
@@ -44,9 +44,9 @@
     function startScan() {
         document.getElementById('start-btn').style.display = 'none';
         
-        // 1. 調整掃描框為「寬扁形」(寬度85%，高度35%)，完美契合長條形條碼
+        // 寬扁形掃描框，適合一維條碼
         const config = { 
-            fps: 20, // 提高每秒偵測幀數，抓取更快
+            fps: 20, 
             qrbox: function(viewfinderWidth, viewfinderHeight) {
                 return { width: viewfinderWidth * 0.85, height: viewfinderHeight * 0.35 };
             },
@@ -58,19 +58,30 @@
 
         html5QrcodeScanner = new Html5Qrcode("reader");
         
-        // 2. 核心修正：強制瀏覽器索取 1080p 或 720p 的高清後鏡頭，解決模糊問題
-        const cameraConstraints = {
+        // 嘗試優先使用理想高清參數
+        const highResConstraints = {
             facingMode: "environment",
-            width: { ideal: 1920, min: 1280 },
-            height: { ideal: 1080, min: 720 }
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
         };
         
+        // 【核心修正】雙重啟動機制
         html5QrcodeScanner.start(
-            cameraConstraints, 
+            highResConstraints, 
             config,
             onScanSuccess,
             onScanFailure
         ).catch(err => {
+            console.log("高清模式受限，正在自動切換至標準相容模式...", err);
+            // 如果高清失敗，立刻免警告直接啟動普通基本模式（也就是你進第一版能動的模式）
+            return html5QrcodeScanner.start(
+                { facingMode: "environment" }, 
+                config,
+                onScanSuccess,
+                onScanFailure
+            );
+        }).catch(err => {
+            // 只有當普通模式也打不開（真的沒給相機權限）時，才會跳錯誤
             alert("相機啟動失敗，請確認有給予網頁相機權限！");
             document.getElementById('start-btn').style.display = 'block';
         });
@@ -79,7 +90,6 @@
     function onScanSuccess(decodedText, decodedResult) {
         document.getElementById('log').innerText = decodedText;
         
-        // 解析多種可能的分隔符號
         let delimiter = null;
         if (decodedText.includes('\t')) delimiter = '\t';
         else if (decodedText.includes('%09')) delimiter = '%09';
@@ -94,7 +104,7 @@
             document.getElementById('username').value = account;
             document.getElementById('password').value = password;
             
-            if (navigator.vibrate) navigator.vibrate(200); // 成功時手機震動提示
+            if (navigator.vibrate) navigator.vibrate(200); 
             
             html5QrcodeScanner.stop();
             document.getElementById('start-btn').style.display = 'block';
@@ -102,14 +112,13 @@
             
             alert("成功讀取條碼！欄位已自動填入。");
         } else {
-            // 如果沒找到分隔符，就直接把整串字塞進帳號欄供測試
             document.getElementById('username').value = decodedText;
             alert("已讀取條碼，但中間不含跳格符號。");
         }
     }
 
     function onScanFailure(error) {
-        // 保持靜默
+        // 靜默處理
     }
 </script>
 
